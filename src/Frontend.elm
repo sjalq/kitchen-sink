@@ -154,8 +154,6 @@ tryLoading loadingModel =
 
                         -- ADMIN
                         , adminDisplay = ADUser
-
-                        --
                         , route = loadingModel.route
                         , backendModel = Nothing
                         , message = ""
@@ -173,6 +171,10 @@ tryLoading loadingModel =
                         , inputFilterData = ""
                         , kvViewType = KeyValueStore.KVVSummary
                         , kvVerbosity = KeyValueStore.KVQuiet
+
+                        -- MODEL RETRIEVAL
+                        , modelUrl = "https://kitchen-sink.lamdera.app/_r/getModel"
+                        , modelSecret = "1234567890"
                         }
                     , Cmd.none
                     )
@@ -252,6 +254,12 @@ updateLoaded msg model =
         -- ADMIN
         SetAdminDisplay adminDisplay ->
             ( { model | adminDisplay = adminDisplay }, Cmd.none )
+
+        UpdateRemoteUrl url ->
+            ( { model | modelUrl = url }, Cmd.none )
+
+        UpdateModelSecret secret ->
+            ( { model | modelSecret = secret }, Cmd.none )
 
         -- CUSTOM ELEMENT EXAMPLES
         LanguageChanged language ->
@@ -380,6 +388,9 @@ updateLoaded msg model =
 
         DataUploaded _ ->
             ( model, Lamdera.sendToBackend Types.GetKeyValueStore )
+
+        FELoadBackendModel url secret ->
+            ( model, Lamdera.sendToBackend (BELoadBackendModel url secret) )
 
 
 scrollToTop : Cmd FrontendMsg

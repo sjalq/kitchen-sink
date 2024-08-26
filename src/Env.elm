@@ -4,6 +4,7 @@ module Env exposing
     , developerEmails
     , domain
     , mode
+    , modelKey
     , postmarkApiKey
     , stripePrivateApiKey
     , stripePublicApiKey
@@ -69,6 +70,10 @@ developerEmails =
 
 adminPassword =
     "123"
+
+
+modelKey =
+    "1234567890"
 
 
 mode =

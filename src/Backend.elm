@@ -2,6 +2,7 @@ module Backend exposing (app)
 
 import AssocList
 import Auth.HttpHelpers
+import Backend.ModelImport exposing (fetchImportedModel)
 import Backend.Session
 import BackendHelper
 import BiDict
@@ -402,6 +403,14 @@ update msg model =
 
         ErrorEmailSent _ ->
             ( model, Cmd.none )
+
+        LoadedBackendModel modelResponse ->
+            case modelResponse of
+                Ok model_ ->
+                    ( model_, Cmd.none )
+
+                Err error ->
+                    ( model, Cmd.none )
     )
         |> (\( newModel, cmd ) ->
                 ( newModel, Cmd.batch [ cmd ] )
@@ -506,3 +515,7 @@ updateFromFrontend sessionId clientId msg model =
         -- DATA
         GetKeyValueStore ->
             ( model, Lamdera.sendToFrontend clientId (GotKeyValueStore model.keyValueStore) )
+
+        -- MODEL RETRIEVAL
+        BELoadBackendModel url secret ->
+            ( model, fetchImportedModel url secret |> Task.attempt LoadedBackendModel )

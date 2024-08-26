@@ -104,6 +104,10 @@ type alias LoadedModel =
     , inputFilterData : String
     , kvViewType : KeyValueStore.KVViewType
     , kvVerbosity : KeyValueStore.KVVerbosity
+
+    -- MODEL RETRIEVAL
+    , modelUrl : String
+    , modelSecret : String
     }
 
 
@@ -114,10 +118,11 @@ type SignInState
 
 
 type AdminDisplay
-    = ADStripe
-    | ADUser
+    = ADUser
     | ADSession
     | ADKeyValues
+    | ADStripe
+    | ADLoadBackend
 
 
 type alias BackendModel =
@@ -202,6 +207,9 @@ type FrontendMsg
     | DataUploaded (Result Http.Error ())
     | SetKVViewType KeyValueStore.KVViewType
     | CycleKVVerbosity KeyValueStore.KVVerbosity
+    | UpdateRemoteUrl String
+    | UpdateModelSecret String
+    | FELoadBackendModel String String
 
 
 type ToBackend
@@ -224,6 +232,8 @@ type ToBackend
     | GetWeatherData String
       -- DATA (JC)
     | GetKeyValueStore
+      -- MODEL RETRIEVAL
+    | BELoadBackendModel String String
 
 
 type BackendMsg
@@ -245,6 +255,7 @@ type BackendMsg
     | ErrorEmailSent (Result Http.Error Postmark.PostmarkSendResponse)
       -- EXAMPLES
     | GotWeatherData ClientId (Result Http.Error Weather.WeatherData)
+    | LoadedBackendModel (Result Http.Error BackendModel)
 
 
 type alias InitData2 =

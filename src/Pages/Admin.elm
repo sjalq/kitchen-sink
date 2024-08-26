@@ -1,11 +1,11 @@
 module Pages.Admin exposing (Window, view)
 
 import AssocList
-import BiDict
 import Codec
 import Dict
 import Element exposing (Element, column, fill, height, px, row, scrollbarY, spacing, text, width)
 import Element.Font
+import Element.Input as Input
 import EmailAddress
 import Id exposing (Id)
 import KeyValueStore
@@ -37,6 +37,7 @@ view model =
             , View.Button.setAdminDisplay model.adminDisplay ADSession "Sessions"
             , View.Button.setAdminDisplay model.adminDisplay ADKeyValues "Key-Value Store"
             , View.Button.setAdminDisplay model.adminDisplay ADStripe "Stripe Data"
+            , View.Button.setAdminDisplay model.adminDisplay ADLoadBackend "Load Backend"
             ]
         , case model.backendModel of
             Nothing ->
@@ -55,6 +56,10 @@ view model =
 
                     ADStripe ->
                         viewStripeData backendModel
+
+                    ADLoadBackend ->
+                        viewLoadBackend model
+        , viewLoadBackend model
         ]
 
 
@@ -257,6 +262,28 @@ viewExpiredOrdersPretty expiredOrders =
         , Element.spacing 24
         ]
         (Element.el [ Element.Font.bold ] (text "Expired Orders") :: List.map viewOrder orders)
+
+
+viewLoadBackend : LoadedModel -> Element FrontendMsg
+viewLoadBackend loadedModel =
+    column
+        [ width fill
+        , spacing 24
+        ]
+        [ Input.text []
+            { onChange = UpdateRemoteUrl
+            , text = loadedModel.modelUrl
+            , placeholder = Just (Input.placeholder [] (text "Enter remote URL"))
+            , label = Input.labelAbove [] (text "Remote URL")
+            }
+        , Input.text []
+            { onChange = UpdateModelSecret
+            , text = loadedModel.modelSecret
+            , placeholder = Just (Input.placeholder [] (text "Enter model secret"))
+            , label = Input.labelAbove [] (text "Model Secret")
+            }
+        , View.Button.button (FELoadBackendModel loadedModel.modelUrl loadedModel.modelSecret) "Load Backend Model"
+        ]
 
 
 loadProdBackend : Cmd msg

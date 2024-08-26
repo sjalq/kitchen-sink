@@ -1,5 +1,6 @@
 module View.Button exposing
     ( askToRenewPrices
+    , button
     , buyProduct
     , cancelSignUp
     , copyTextToClipboard

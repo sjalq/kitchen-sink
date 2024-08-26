@@ -6,9 +6,7 @@ module RPC exposing
     )
 
 import AssocList
-import Backend
 import BackendHelper
-import Codec
 import Config
 import Dict
 import Email
@@ -24,7 +22,7 @@ import Json.Encode
 import KeyValueStore
 import Lamdera exposing (SessionId)
 import Lamdera.Wire3 as Wire3
-import LamderaRPC exposing (RPC(..))
+import LamderaRPC exposing (Headers, HttpRequest, RPCResult(..))
 import List.Nonempty exposing (Nonempty(..))
 import Name
 import Postmark
@@ -44,9 +42,10 @@ import Types exposing (BackendModel, BackendMsg(..), ToFrontend(..))
 purchaseCompletedEndpoint :
     SessionId
     -> BackendModel
+    -> Headers
     -> Json.Decode.Value
     -> ( Result Http.Error Json.Decode.Value, BackendModel, Cmd BackendMsg )
-purchaseCompletedEndpoint _ model request =
+purchaseCompletedEndpoint _ model headers request =
     let
         response =
             Ok (Json.Encode.string "ok")
@@ -174,11 +173,34 @@ requestPurchaseCompletedEndpoint value =
 
 
 
+-- GET BACKEND MODEL
+
+
+getModel : HttpRequest -> SessionId -> BackendModel -> Dict.Dict String String -> intput -> ( Result Http.Error BackendModel, BackendModel, Cmd msg )
+getModel _ _ model headers _ =
+    case headers |> Dict.get "X-Lamdera-Model-Key" of
+        Just modelKey ->
+            if Env.modelKey == modelKey then
+                ( model |> Ok, model, Cmd.none )
+
+            else
+                ( Http.BadStatus 401 |> Err, model, Cmd.none )
+
+        Nothing ->
+            ( Http.BadStatus 401 |> Err, model, Cmd.none )
+
+
+
 -- EXAMPLE (Mario)
 
 
-reverse : SessionId -> BackendModel -> String -> ( Result error String, BackendModel, Cmd msg )
-reverse sessionId model input =
+reverse :
+    SessionId
+    -> BackendModel
+    -> Headers
+    -> String
+    -> ( Result Http.Error String, BackendModel, Cmd BackendMsg )
+reverse sessionId model headers input =
     ( Ok <| String.reverse input, model, Cmd.none )
 
 
@@ -195,8 +217,13 @@ requestReverse value =
 -- Define the handler
 
 
-exampleJson : SessionId -> BackendModel -> Json.Encode.Value -> ( Result Http.Error Json.Encode.Value, BackendModel, Cmd BackendMsg )
-exampleJson sessionId model jsonArg =
+exampleJson :
+    SessionId
+    -> BackendModel
+    -> Headers
+    -> Json.Decode.Value
+    -> ( Result Http.Error Json.Decode.Value, BackendModel, Cmd BackendMsg )
+exampleJson sessionId model headers jsonArg =
     let
         decoder =
             Json.Decode.succeed identity
@@ -253,8 +280,13 @@ getValueWithKey key =
         }
 
 
-putKeyValuePair : SessionId -> BackendModel -> Json.Encode.Value -> ( Result Http.Error Json.Encode.Value, BackendModel, Cmd msg )
-putKeyValuePair sessionId model jsonArg =
+putKeyValuePair :
+    SessionId
+    -> BackendModel
+    -> Headers
+    -> Json.Decode.Value
+    -> ( Result Http.Error Json.Decode.Value, BackendModel, Cmd BackendMsg )
+putKeyValuePair sessionId model headers jsonArg =
     case Json.Decode.decodeValue kvDatumDecoder jsonArg of
         Ok kv ->
             ( Ok (kvDatumEncoder kv)
@@ -273,8 +305,13 @@ putKeyValuePair sessionId model jsonArg =
             )
 
 
-getKeyValuePair : SessionId -> BackendModel -> Json.Encode.Value -> ( Result Http.Error Json.Encode.Value, BackendModel, Cmd msg )
-getKeyValuePair sessionId model jsonArg =
+getKeyValuePair :
+    SessionId
+    -> BackendModel
+    -> Headers
+    -> Json.Decode.Value
+    -> ( Result Http.Error Json.Decode.Value, BackendModel, Cmd BackendMsg )
+getKeyValuePair sessionId model headers jsonArg =
     let
         decoder : Json.Decode.Decoder String
         decoder =
@@ -351,16 +388,17 @@ kvDatumEncoder kvDatum =
 
 
 lamdera_handleEndpoints :
-    LamderaRPC.RPCArgs
+    a
+    -> LamderaRPC.HttpRequest
     -> BackendModel
     -> ( LamderaRPC.RPCResult, BackendModel, Cmd BackendMsg )
-lamdera_handleEndpoints args model =
+lamdera_handleEndpoints rawReq args model =
     case args.endpoint of
         "stripe" ->
             LamderaRPC.handleEndpointJson purchaseCompletedEndpoint args model
 
         "reverse" ->
-            LamderaRPC.handleEndpoint reverse Wire3.decodeString Wire3.encodeString args model
+            LamderaRPC.handleEndpointString reverse args model
 
         "exampleJson" ->
             LamderaRPC.handleEndpointJson exampleJson args model
@@ -371,8 +409,11 @@ lamdera_handleEndpoints args model =
         "getKeyValuePair" ->
             LamderaRPC.handleEndpointJson getKeyValuePair args model
 
+        "getModel" ->
+            LamderaRPC.handleEndpointBytes (getModel args) (Wire3.succeedDecode ()) Types.w3_encode_BackendModel args model
+
         _ ->
-            ( LamderaRPC.ResultFailure <| Http.BadBody <| "Unknown endpoint " ++ args.endpoint, model, Cmd.none )
+            ( LamderaRPC.failWith LamderaRPC.StatusBadRequest <| "Unknown endpoint " ++ args.endpoint, model, Cmd.none )
 
 
 
